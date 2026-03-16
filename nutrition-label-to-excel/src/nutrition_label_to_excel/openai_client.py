@@ -12,6 +12,8 @@ from .models import NutritionLabelExtraction
 
 
 RESPONSES_URL = "https://api.openai.com/v1/responses"
+DEFAULT_MAX_OUTPUT_TOKENS = 2000
+RETRY_MAX_OUTPUT_TOKENS = 12000
 
 EXTRACTION_PROMPT = """You extract nutrition label data from a single food package photo.
 
@@ -79,30 +81,20 @@ class OpenAIResponsesLabelExtractor:
         if not self.api_key:
             raise RuntimeError("OPENAI_API_KEY is not configured.")
 
-        payload = self._build_payload(image_bytes=image_bytes, content_type=content_type)
         owns_client = self._client is None
         client = self._client or httpx.AsyncClient(timeout=45.0)
 
         try:
-            response = await client.post(
-                RESPONSES_URL,
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
+            response_json = await self._create_response_with_retry(
+                client=client,
+                image_bytes=image_bytes,
+                content_type=content_type,
             )
-            response.raise_for_status()
-        except httpx.HTTPStatusError as exc:
-            message = exc.response.text.strip() or "OpenAI request failed."
-            raise RuntimeError(message) from exc
-        except httpx.HTTPError as exc:
-            raise RuntimeError("Unable to reach OpenAI.") from exc
         finally:
             if owns_client:
                 await client.aclose()
 
-        parsed = self._parse_response(response.json())
+        parsed = self._parse_response(response_json)
         try:
             extraction = NutritionLabelExtraction.model_validate(parsed)
             return validate_extraction(extraction)
@@ -115,7 +107,50 @@ class OpenAIResponsesLabelExtractor:
                 ) from exc
             raise RuntimeError("The label data could not be validated.") from exc
 
-    def _build_payload(self, image_bytes: bytes, content_type: str) -> dict:
+    async def _create_response_with_retry(
+        self,
+        client: httpx.AsyncClient,
+        image_bytes: bytes,
+        content_type: str,
+    ) -> dict:
+        token_attempts = (DEFAULT_MAX_OUTPUT_TOKENS, RETRY_MAX_OUTPUT_TOKENS)
+
+        for index, max_output_tokens in enumerate(token_attempts):
+            payload = self._build_payload(
+                image_bytes=image_bytes,
+                content_type=content_type,
+                max_output_tokens=max_output_tokens,
+            )
+            response_json = await self._post_response(client=client, payload=payload)
+            incomplete_reason = self._get_incomplete_reason(response_json)
+
+            if incomplete_reason is None:
+                return response_json
+            if incomplete_reason == "max_output_tokens" and index < len(token_attempts) - 1:
+                continue
+            raise RuntimeError(f"OpenAI returned an incomplete response ({incomplete_reason}).")
+
+        raise RuntimeError("OpenAI returned an incomplete response.")
+
+    async def _post_response(self, client: httpx.AsyncClient, payload: dict) -> dict:
+        try:
+            response = await client.post(
+                RESPONSES_URL,
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as exc:
+            message = exc.response.text.strip() or "OpenAI request failed."
+            raise RuntimeError(message) from exc
+        except httpx.HTTPError as exc:
+            raise RuntimeError("Unable to reach OpenAI.") from exc
+
+    def _build_payload(self, image_bytes: bytes, content_type: str, max_output_tokens: int) -> dict:
         encoded = base64.b64encode(image_bytes).decode("ascii")
         data_url = f"data:{content_type};base64,{encoded}"
         return {
@@ -136,7 +171,7 @@ class OpenAIResponsesLabelExtractor:
                     ],
                 }
             ],
-            "max_output_tokens": 500,
+            "max_output_tokens": max_output_tokens,
             "text": {
                 "format": {
                     "type": "json_schema",
@@ -147,10 +182,13 @@ class OpenAIResponsesLabelExtractor:
             },
         }
 
-    def _parse_response(self, response_json: dict) -> dict:
-        if response_json.get("status") == "incomplete":
-            raise RuntimeError("OpenAI returned an incomplete response.")
+    def _get_incomplete_reason(self, response_json: dict) -> str | None:
+        if response_json.get("status") != "incomplete":
+            return None
+        details = response_json.get("incomplete_details") or {}
+        return details.get("reason") or "unknown"
 
+    def _parse_response(self, response_json: dict) -> dict:
         output_text = response_json.get("output_text")
         if isinstance(output_text, str) and output_text.strip():
             return json.loads(output_text)
