@@ -60,7 +60,13 @@ function Setup-AppVenv {
     & $venvPython -m pip install --upgrade pip
 
     Write-Host "[$AppName] installing requirements..."
-    & $venvPython -m pip install -r $requirements
+    Push-Location $AppPath
+    try {
+        & $venvPython -m pip install -r $requirements
+    }
+    finally {
+        Pop-Location
+    }
 
     Write-Host "[$AppName] setup complete."
 }
