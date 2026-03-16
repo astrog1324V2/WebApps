@@ -53,7 +53,7 @@ function formatClockTime() {
   return `${String(hours).padStart(2, "0")}:${minutes} ${suffix}`;
 }
 
-function buildTsvRow(values) {
+function buildColumnBlock(values) {
   return [
     formatCalories(values.calories),
     formatGrams(values.protein_g),
@@ -62,7 +62,7 @@ function buildTsvRow(values) {
     formatGrams(values.sugars_g),
     formatGrams(values.fibre_g),
     formatClockTime(),
-  ].join("\t");
+  ].join("\n");
 }
 
 function fallbackCopyText(text) {
@@ -92,6 +92,20 @@ async function copyTextToClipboard(text) {
     }
   }
   fallbackCopyText(text);
+}
+
+function renderMacroGrid(target, values, emptyLabel = "Missing") {
+  target.innerHTML = "";
+  for (const macro of macroConfig) {
+    const pill = document.createElement("div");
+    pill.className = "ingredient-macro-pill";
+    const value = parseOptionalNumber(values[macro.key]);
+    const displayValue = value === null
+      ? emptyLabel
+      : (macro.type === "calories" ? formatCalories(value) : formatGrams(value));
+    pill.innerHTML = `<strong>${displayValue}</strong><span>${macro.label}</span>`;
+    target.appendChild(pill);
+  }
 }
 
 function computeScaledIngredient(ingredient) {
@@ -214,11 +228,18 @@ function updateIngredientCard(card, ingredient, index) {
   const warnings = [...ingredient.warnings, ...ingredient._result.errors];
   renderWarnings(card.querySelector(".warnings"), warnings);
 
+  renderMacroGrid(card.querySelector(".extracted-grid"), ingredient);
+  renderMacroGrid(
+    card.querySelector(".subtotal-grid"),
+    ingredient._result.scaled,
+    ingredient._result.valid ? "0" : "Waiting"
+  );
+
   const subtotalElement = card.querySelector(".ingredient-subtotal");
   if (ingredient._result.valid) {
-    subtotalElement.textContent = buildTsvRow(ingredient._result.scaled);
+    subtotalElement.textContent = "Column copy ready for 7 spreadsheet rows.";
   } else {
-    subtotalElement.textContent = "Complete the fields to enable copy.";
+    subtotalElement.textContent = "Enter grams used to calculate this ingredient.";
   }
 
   card.querySelector(".copy-single").disabled = !ingredient._result.valid;
@@ -253,12 +274,6 @@ function renderIngredients() {
     const fieldMap = {
       ".field-serving-grams": "serving_grams",
       ".field-consumed-grams": "consumed_grams",
-      ".field-calories": "calories",
-      ".field-protein": "protein_g",
-      ".field-carbs": "carbs_g",
-      ".field-fats": "fats_g",
-      ".field-sugars": "sugars_g",
-      ".field-fibre": "fibre_g",
     };
 
     for (const [selector, key] of Object.entries(fieldMap)) {
@@ -273,7 +288,7 @@ function renderIngredients() {
     const copySingleButton = fragment.querySelector(".copy-single");
     copySingleButton.addEventListener("click", async () => {
       try {
-        await copyTextToClipboard(buildTsvRow(ingredient._result.scaled));
+        await copyTextToClipboard(buildColumnBlock(ingredient._result.scaled));
         refreshMealTotals(`${ingredient.name} copied.`);
       } catch (error) {
         copyStatus.textContent = "Could not copy this item. Try again.";
@@ -348,8 +363,8 @@ copyTotalButton.addEventListener("click", async () => {
     return;
   }
   try {
-    await copyTextToClipboard(buildTsvRow(totals));
-    refreshMealTotals("Meal total copied.");
+    await copyTextToClipboard(buildColumnBlock(totals));
+    refreshMealTotals("Meal total copied for 7 rows.");
   } catch (error) {
     copyStatus.textContent = "Could not copy the meal total. Try again.";
   }

@@ -37,7 +37,7 @@
         <div class="copy-row">
           <p id="copy-status" class="status" aria-live="polite"></p>
           <button id="update-total" class="ghost-button" type="button">Update Total Macros</button>
-          <button id="copy-total" type="button" disabled>Copy Total TSV</button>
+          <button id="copy-total" type="button" disabled>Copy Total Column</button>
         </div>
       </section>
 
@@ -66,37 +66,24 @@
 
         <div class="ingredient-grid">
           <label>
-            <span>Serving grams</span>
+            <span>Label serving grams</span>
             <input class="field-serving-grams" type="number" min="0" step="0.1" inputmode="decimal">
           </label>
           <label>
-            <span>Consumed grams</span>
+            <span>Amount used (g)</span>
             <input class="field-consumed-grams" type="number" min="0" step="0.1" inputmode="decimal">
           </label>
-          <label>
-            <span>Calories</span>
-            <input class="field-calories" type="number" min="0" step="0.1" inputmode="decimal">
-          </label>
-          <label>
-            <span>Protein (g)</span>
-            <input class="field-protein" type="number" min="0" step="0.1" inputmode="decimal">
-          </label>
-          <label>
-            <span>Carbs (g)</span>
-            <input class="field-carbs" type="number" min="0" step="0.1" inputmode="decimal">
-          </label>
-          <label>
-            <span>Fats (g)</span>
-            <input class="field-fats" type="number" min="0" step="0.1" inputmode="decimal">
-          </label>
-          <label>
-            <span>Sugars (g)</span>
-            <input class="field-sugars" type="number" min="0" step="0.1" inputmode="decimal">
-          </label>
-          <label>
-            <span>Fibre (g)</span>
-            <input class="field-fibre" type="number" min="0" step="0.1" inputmode="decimal">
-          </label>
+        </div>
+
+        <div class="ingredient-macro-columns">
+          <section class="macro-panel">
+            <p class="panel-title">Per label serving</p>
+            <div class="ingredient-macro-grid extracted-grid"></div>
+          </section>
+          <section class="macro-panel">
+            <p class="panel-title">For amount used</p>
+            <div class="ingredient-macro-grid subtotal-grid"></div>
+          </section>
         </div>
 
         <div class="ingredient-footer">
