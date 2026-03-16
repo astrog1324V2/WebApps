@@ -172,21 +172,40 @@ function renderWarnings(target, messages) {
   });
 }
 
+function updateIngredientCard(card, ingredient, index) {
+  card.querySelector(".ingredient-index").textContent = `Ingredient ${index + 1}`;
+
+  const servingGrams = parseOptionalNumber(ingredient.serving_grams);
+  const servingText = servingGrams > 0
+    ? `${ingredient.serving_label_text} | Current serving: ${formatGrams(servingGrams)} g`
+    : ingredient.serving_label_text;
+  card.querySelector(".ingredient-serving").textContent = servingText;
+
+  const warnings = [...ingredient.warnings, ...ingredient._result.errors];
+  renderWarnings(card.querySelector(".warnings"), warnings);
+
+  const subtotalElement = card.querySelector(".ingredient-subtotal");
+  if (ingredient._result.valid) {
+    subtotalElement.textContent = buildTsvRow(ingredient._result.scaled);
+  } else {
+    subtotalElement.textContent = "Complete the fields to enable copy.";
+  }
+
+  card.querySelector(".copy-single").disabled = !ingredient._result.valid;
+}
+
 function renderIngredients() {
   ingredientList.innerHTML = "";
 
   state.ingredients.forEach((ingredient, index) => {
     const fragment = template.content.cloneNode(true);
-
-    fragment.querySelector(".ingredient-index").textContent = `Ingredient ${index + 1}`;
+    const card = fragment.querySelector(".ingredient-card");
 
     const nameInput = fragment.querySelector(".ingredient-name");
     nameInput.value = ingredient.name;
     nameInput.addEventListener("input", (event) => {
       ingredient.name = event.target.value || `Ingredient ${index + 1}`;
     });
-
-    fragment.querySelector(".ingredient-serving").textContent = ingredient.serving_label_text;
 
     const fieldMap = {
       ".field-serving-grams": "serving_grams",
@@ -204,23 +223,12 @@ function renderIngredients() {
       input.value = ingredient[key] ?? "";
       input.addEventListener("input", (event) => {
         ingredient[key] = event.target.value;
-        renderIngredients();
         renderTotals();
+        updateIngredientCard(card, ingredient, index);
       });
     }
 
-    const warnings = [...ingredient.warnings, ...ingredient._result.errors];
-    renderWarnings(fragment.querySelector(".warnings"), warnings);
-
-    const subtotalElement = fragment.querySelector(".ingredient-subtotal");
-    if (ingredient._result.valid) {
-      subtotalElement.textContent = buildTsvRow(ingredient._result.scaled);
-    } else {
-      subtotalElement.textContent = "Complete the fields to enable copy.";
-    }
-
     const copySingleButton = fragment.querySelector(".copy-single");
-    copySingleButton.disabled = !ingredient._result.valid;
     copySingleButton.addEventListener("click", async () => {
       await navigator.clipboard.writeText(buildTsvRow(ingredient._result.scaled));
       copyStatus.textContent = `${ingredient.name} copied.`;
@@ -233,6 +241,7 @@ function renderIngredients() {
       renderTotals();
     });
 
+    updateIngredientCard(card, ingredient, index);
     ingredientList.appendChild(fragment);
   });
 }
