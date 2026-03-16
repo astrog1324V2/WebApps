@@ -6,6 +6,7 @@ This guide runs all apps on your Ubuntu desktop for local/LAN testing:
 - Blackjack: `http://<ubuntu-ip>:5101`
 - Yahtzee: `http://<ubuntu-ip>:5102`
 - Daily Math: `http://<ubuntu-ip>:5103`
+- Nutrition Label: `http://<ubuntu-ip>:5104`
 
 ## Quick start (one command)
 
@@ -31,6 +32,7 @@ export OPENAI_API_KEY="sk-..."
 export BLACKJACK_PORT=5101
 export YAHTZEE_PORT=5102
 export MATH_PORT=5103
+export NUTRITION_PORT=5104
 export HUB_PORT=8080
 ```
 
@@ -86,7 +88,18 @@ python -m pip install -r requirements.txt
 deactivate
 ```
 
-## 4) Start all apps (4 terminals)
+### Nutrition Label (`nutrition-label-to-excel`)
+
+```bash
+cd ~/hosting_apps/nutrition-label-to-excel
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+deactivate
+```
+
+## 4) Start all apps (5 terminals)
 
 Run each block in its own terminal tab/window.
 
@@ -119,7 +132,20 @@ Notes:
 - `OPENAI_API_KEY` is only required for generating new daily sets (`POST /generate`).
 - Browsing existing static pages still works without a key.
 
-### Terminal D: Homepage hub on port 8080
+### Terminal D: Nutrition Label on port 5104
+
+```bash
+cd ~/hosting_apps/nutrition-label-to-excel
+source .venv/bin/activate
+export OPENAI_API_KEY="sk-..."
+python -m uvicorn nutrition_label_to_excel.app:app --app-dir src --host 0.0.0.0 --port 5104
+```
+
+Notes:
+- `OPENAI_API_KEY` is required to analyze label photos.
+- The UI itself loads without the key, but scans will fail until it is set.
+
+### Terminal E: Homepage hub on port 8080
 
 ```bash
 cd ~/hosting_apps
@@ -165,7 +191,7 @@ Then refresh the homepage.
   - Confirm server is bound to `0.0.0.0`.
   - Allow firewall ports:
   - `sudo ufw allow 8080`
-  - `sudo ufw allow 5101:5103/tcp`
+  - `sudo ufw allow 5101:5104/tcp`
 - Homepage loads but app links fail:
   - Confirm each app terminal is still running.
   - Open the app URL directly first (for example `http://<ubuntu-ip>:5101`).

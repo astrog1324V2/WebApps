@@ -12,6 +12,7 @@ function Show-Usage {
     Write-Host "This sets up Python virtual environments for:"
     Write-Host "  - yahtzee-game"
     Write-Host "  - Daily_math_games_v2"
+    Write-Host "  - nutrition-label-to-excel"
 }
 
 if ($Help) {
@@ -72,9 +73,11 @@ if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
 
 $yahtzeePath = Join-Path $RootDir "yahtzee-game"
 $mathPath = Join-Path $RootDir "Daily_math_games_v2"
+$nutritionPath = Join-Path $RootDir "nutrition-label-to-excel"
 
 Setup-AppVenv -AppName "yahtzee-game" -AppPath $yahtzeePath
 Setup-AppVenv -AppName "Daily_math_games_v2" -AppPath $mathPath
+Setup-AppVenv -AppName "nutrition-label-to-excel" -AppPath $nutritionPath
 
 Write-Host ""
 Write-Host "All setup complete."

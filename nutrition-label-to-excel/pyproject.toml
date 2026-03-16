@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nutrition-label-to-excel"
+version = "0.1.0"
+description = "Phone-friendly nutrition label scanner and meal macro builder for Excel paste workflows."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+  { name = "Codex" }
+]
+dependencies = [
+  "fastapi>=0.115",
+  "httpx>=0.28",
+  "python-dotenv>=1.0",
+  "python-multipart>=0.0.20",
+  "uvicorn>=0.34",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3",
+]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+nutrition_label_to_excel = ["static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

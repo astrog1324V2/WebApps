@@ -9,6 +9,7 @@ PID_DIR="$RUNTIME_DIR/pids"
 BLACKJACK_PORT="${BLACKJACK_PORT:-5101}"
 YAHTZEE_PORT="${YAHTZEE_PORT:-5102}"
 MATH_PORT="${MATH_PORT:-5103}"
+NUTRITION_PORT="${NUTRITION_PORT:-5104}"
 HUB_PORT="${HUB_PORT:-8080}"
 HOST_BIND="${HOST_BIND:-0.0.0.0}"
 
@@ -26,6 +27,7 @@ Optional environment variables:
   BLACKJACK_PORT (default: 5101)
   YAHTZEE_PORT   (default: 5102)
   MATH_PORT      (default: 5103)
+  NUTRITION_PORT (default: 5104)
   HUB_PORT       (default: 8080)
   HOST_BIND      (default: 0.0.0.0)
 EOF
@@ -131,6 +133,7 @@ print_urls() {
   echo "  Blackjack: http://localhost:$BLACKJACK_PORT"
   echo "  Yahtzee:   http://localhost:$YAHTZEE_PORT"
   echo "  DailyMath: http://localhost:$MATH_PORT"
+  echo "  Nutrition: http://localhost:$NUTRITION_PORT"
   echo
   echo "Open from another device:"
   echo "  Hub:       http://$lan_ip:$HUB_PORT"
@@ -140,10 +143,12 @@ start_all() {
   require_file "$ROOT_DIR/blackjack-game/.venv/bin/python" "Create venv in blackjack-game and install requirements."
   require_file "$ROOT_DIR/yahtzee-game/.venv/bin/python" "Create venv in yahtzee-game and install requirements."
   require_file "$ROOT_DIR/Daily_math_games_v2/.venv/bin/python" "Create venv in Daily_math_games_v2 and install requirements."
+  require_file "$ROOT_DIR/nutrition-label-to-excel/.venv/bin/python" "Create venv in nutrition-label-to-excel and install requirements."
   require_file "$ROOT_DIR/home-page/index.html" "The homepage file should exist at home-page/index.html."
 
   if [[ -z "${OPENAI_API_KEY:-}" ]]; then
     echo "[daily-math] OPENAI_API_KEY is not set. App will run, but /generate will fail until key is set."
+    echo "[nutrition-label] OPENAI_API_KEY is not set. Label scans will fail until key is set."
   fi
 
   start_one "blackjack" "$ROOT_DIR/blackjack-game" \
@@ -156,6 +161,10 @@ start_all() {
     env OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
     "$ROOT_DIR/Daily_math_games_v2/.venv/bin/python" -m uvicorn app.main:app --host "$HOST_BIND" --port "$MATH_PORT"
 
+  start_one "nutrition-label" "$ROOT_DIR/nutrition-label-to-excel" \
+    env OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
+    "$ROOT_DIR/nutrition-label-to-excel/.venv/bin/python" -m uvicorn nutrition_label_to_excel.app:app --app-dir src --host "$HOST_BIND" --port "$NUTRITION_PORT"
+
   start_one "home-page" "$ROOT_DIR" \
     python3 -m http.server "$HUB_PORT" --bind "$HOST_BIND" --directory home-page
 
@@ -167,6 +176,7 @@ start_all() {
 
 stop_all() {
   stop_one "home-page"
+  stop_one "nutrition-label"
   stop_one "daily-math"
   stop_one "yahtzee"
   stop_one "blackjack"
@@ -176,6 +186,7 @@ status_all() {
   print_status_one "blackjack"
   print_status_one "yahtzee"
   print_status_one "daily-math"
+  print_status_one "nutrition-label"
   print_status_one "home-page"
 }
 

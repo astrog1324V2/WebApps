@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Nutrition Label To Excel</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero">
+        <p class="eyebrow">Nutrition Label To Excel</p>
+        <h1>Scan labels. Build meals. Copy one Excel row.</h1>
+        <p class="lede">Take a label photo, correct anything the scan missed, set grams used for each ingredient, and copy one TSV row for your spreadsheet.</p>
+      </section>
+
+      <section class="panel">
+        <form id="scan-form" class="scan-form">
+          <label class="upload-field">
+            <span>Nutrition label photo</span>
+            <input id="label-image" name="file" type="file" accept="image/*" capture="environment" required>
+          </label>
+          <button id="scan-button" type="submit">Analyze Label</button>
+        </form>
+        <p id="scan-status" class="status" aria-live="polite"></p>
+      </section>
+
+      <section class="panel totals-panel">
+        <div class="totals-header">
+          <div>
+            <p class="eyebrow">Meal Total</p>
+            <h2>Your copy-ready row</h2>
+          </div>
+          <button id="clear-meal" class="ghost-button" type="button">Clear Meal</button>
+        </div>
+        <div id="total-grid" class="macro-grid"></div>
+        <div class="copy-row">
+          <p id="copy-status" class="status" aria-live="polite"></p>
+          <button id="copy-total" type="button" disabled>Copy Total TSV</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="totals-header">
+          <div>
+            <p class="eyebrow">Ingredients</p>
+            <h2>Meal builder</h2>
+          </div>
+          <p id="ingredient-summary" class="supporting-text">No ingredients yet.</p>
+        </div>
+        <div id="ingredient-list" class="ingredient-list"></div>
+      </section>
+    </main>
+
+    <template id="ingredient-template">
+      <article class="ingredient-card">
+        <div class="ingredient-header">
+          <div>
+            <p class="ingredient-index"></p>
+            <input class="ingredient-name" type="text" maxlength="80">
+            <p class="ingredient-serving"></p>
+          </div>
+          <button class="danger-button remove-ingredient" type="button">Remove</button>
+        </div>
+
+        <div class="ingredient-grid">
+          <label>
+            <span>Serving grams</span>
+            <input class="field-serving-grams" type="number" min="0" step="0.1" inputmode="decimal">
+          </label>
+          <label>
+            <span>Consumed grams</span>
+            <input class="field-consumed-grams" type="number" min="0" step="0.1" inputmode="decimal">
+          </label>
+          <label>
+            <span>Calories</span>
+            <input class="field-calories" type="number" min="0" step="0.1" inputmode="decimal">
+          </label>
+          <label>
+            <span>Protein (g)</span>
+            <input class="field-protein" type="number" min="0" step="0.1" inputmode="decimal">
+          </label>
+          <label>
+            <span>Carbs (g)</span>
+            <input class="field-carbs" type="number" min="0" step="0.1" inputmode="decimal">
+          </label>
+          <label>
+            <span>Fats (g)</span>
+            <input class="field-fats" type="number" min="0" step="0.1" inputmode="decimal">
+          </label>
+          <label>
+            <span>Sugars (g)</span>
+            <input class="field-sugars" type="number" min="0" step="0.1" inputmode="decimal">
+          </label>
+          <label>
+            <span>Fibre (g)</span>
+            <input class="field-fibre" type="number" min="0" step="0.1" inputmode="decimal">
+          </label>
+        </div>
+
+        <div class="ingredient-footer">
+          <div class="warnings"></div>
+          <div class="copy-row">
+            <p class="ingredient-subtotal"></p>
+            <button class="ghost-button copy-single" type="button">Copy This Item</button>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
