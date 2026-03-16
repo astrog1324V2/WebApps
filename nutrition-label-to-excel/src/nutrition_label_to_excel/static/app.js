@@ -19,6 +19,7 @@ const ingredientList = document.querySelector("#ingredient-list");
 const ingredientSummary = document.querySelector("#ingredient-summary");
 const totalGrid = document.querySelector("#total-grid");
 const copyStatus = document.querySelector("#copy-status");
+const updateTotalButton = document.querySelector("#update-total");
 const copyTotalButton = document.querySelector("#copy-total");
 const clearMealButton = document.querySelector("#clear-meal");
 const template = document.querySelector("#ingredient-template");
@@ -62,6 +63,35 @@ function buildTsvRow(values) {
     formatGrams(values.fibre_g),
     formatClockTime(),
   ].join("\t");
+}
+
+function fallbackCopyText(text) {
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.setAttribute("readonly", "");
+  textArea.style.position = "fixed";
+  textArea.style.opacity = "0";
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+
+  const copied = document.execCommand("copy");
+  document.body.removeChild(textArea);
+  if (!copied) {
+    throw new Error("Copy failed.");
+  }
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch (error) {
+      // Fall through to the legacy copy path for LAN/mobile browsers.
+    }
+  }
+  fallbackCopyText(text);
 }
 
 function computeScaledIngredient(ingredient) {
@@ -194,6 +224,19 @@ function updateIngredientCard(card, ingredient, index) {
   card.querySelector(".copy-single").disabled = !ingredient._result.valid;
 }
 
+function refreshMealTotals(statusMessage = "") {
+  renderTotals();
+  document.querySelectorAll(".ingredient-card").forEach((card, index) => {
+    const ingredient = state.ingredients[index];
+    if (ingredient) {
+      updateIngredientCard(card, ingredient, index);
+    }
+  });
+  if (statusMessage) {
+    copyStatus.textContent = statusMessage;
+  }
+}
+
 function renderIngredients() {
   ingredientList.innerHTML = "";
 
@@ -223,22 +266,24 @@ function renderIngredients() {
       input.value = ingredient[key] ?? "";
       input.addEventListener("input", (event) => {
         ingredient[key] = event.target.value;
-        renderTotals();
-        updateIngredientCard(card, ingredient, index);
+        refreshMealTotals();
       });
     }
 
     const copySingleButton = fragment.querySelector(".copy-single");
     copySingleButton.addEventListener("click", async () => {
-      await navigator.clipboard.writeText(buildTsvRow(ingredient._result.scaled));
-      copyStatus.textContent = `${ingredient.name} copied.`;
-      renderTotals();
+      try {
+        await copyTextToClipboard(buildTsvRow(ingredient._result.scaled));
+        refreshMealTotals(`${ingredient.name} copied.`);
+      } catch (error) {
+        copyStatus.textContent = "Could not copy this item. Try again.";
+      }
     });
 
     fragment.querySelector(".remove-ingredient").addEventListener("click", () => {
       state.ingredients = state.ingredients.filter((item) => item.id !== ingredient.id);
       renderIngredients();
-      renderTotals();
+      refreshMealTotals();
     });
 
     updateIngredientCard(card, ingredient, index);
@@ -262,9 +307,8 @@ function addIngredient(extraction) {
     warnings: extraction.warnings || [],
     _result: { valid: false, errors: [], scaled: {} },
   });
-  renderTotals();
   renderIngredients();
-  renderTotals();
+  refreshMealTotals();
 }
 
 scanForm.addEventListener("submit", async (event) => {
@@ -303,15 +347,22 @@ copyTotalButton.addEventListener("click", async () => {
     copyStatus.textContent = "Fix incomplete ingredients before copying the total.";
     return;
   }
-  await navigator.clipboard.writeText(buildTsvRow(totals));
-  copyStatus.textContent = "Meal total copied.";
-  renderTotals();
+  try {
+    await copyTextToClipboard(buildTsvRow(totals));
+    refreshMealTotals("Meal total copied.");
+  } catch (error) {
+    copyStatus.textContent = "Could not copy the meal total. Try again.";
+  }
+});
+
+updateTotalButton.addEventListener("click", () => {
+  refreshMealTotals("Meal totals updated.");
 });
 
 clearMealButton.addEventListener("click", () => {
   state.ingredients = [];
   renderIngredients();
-  renderTotals();
+  refreshMealTotals();
 });
 
-renderTotals();
+refreshMealTotals();
