@@ -13,6 +13,7 @@ function Show-Usage {
     Write-Host "  - yahtzee-game"
     Write-Host "  - Daily_math_games_v2"
     Write-Host "  - nutrition-label-to-excel"
+    Write-Host "  - greenhouse-monitor"
 }
 
 if ($Help) {
@@ -80,10 +81,12 @@ if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
 $yahtzeePath = Join-Path $RootDir "yahtzee-game"
 $mathPath = Join-Path $RootDir "Daily_math_games_v2"
 $nutritionPath = Join-Path $RootDir "nutrition-label-to-excel"
+$greenhousePath = Join-Path $RootDir "greenhouse-monitor"
 
 Setup-AppVenv -AppName "yahtzee-game" -AppPath $yahtzeePath
 Setup-AppVenv -AppName "Daily_math_games_v2" -AppPath $mathPath
 Setup-AppVenv -AppName "nutrition-label-to-excel" -AppPath $nutritionPath
+Setup-AppVenv -AppName "greenhouse-monitor" -AppPath $greenhousePath
 
 Write-Host ""
 Write-Host "All setup complete."

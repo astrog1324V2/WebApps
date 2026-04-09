@@ -1,0 +1,8 @@
+.git
+.gitignore
+.local_runtime
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/*.pyc
+data

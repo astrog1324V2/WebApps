@@ -1,0 +1,26 @@
+{
+  "hub": {
+    "title": "Nathan's App Library",
+    "subtitle": "Single homepage for all web apps running in Docker on the greenhouse host."
+  },
+  "apps": [
+    {
+      "name": "Yahtzee",
+      "slug": "yahtzee-game",
+      "tag": "Game",
+      "description": "Multiplayer Yahtzee built with Flask and Socket.IO.",
+      "port": 5102,
+      "buttonVariant": "primary",
+      "publicSubdomain": "yahtzee"
+    },
+    {
+      "name": "Greenhouse Monitor",
+      "slug": "greenhouse-monitor",
+      "tag": "Sensors",
+      "description": "Live greenhouse and outdoor ESP32 dashboard with per-station history files.",
+      "port": 5105,
+      "buttonVariant": "alt",
+      "publicSubdomain": "greenhouse"
+    }
+  ]
+}

@@ -1,0 +1,259 @@
+:root {
+    color-scheme: light;
+    --bg: #eef2e5;
+    --panel: #fffef8;
+    --line: #d7decb;
+    --text: #1e2a1a;
+    --muted: #596450;
+    --accent: #325c2f;
+    --accent-soft: #dce9d4;
+    --danger: #8a3c2d;
+    --danger-soft: #f6d8d1;
+    --shadow: 0 16px 40px rgba(35, 54, 28, 0.08);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: "Segoe UI", Tahoma, sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(90, 143, 64, 0.08), transparent 28%),
+        linear-gradient(180deg, #f6f7f1 0%, var(--bg) 100%);
+    color: var(--text);
+    line-height: 1.5;
+}
+
+.page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 32px 20px 56px;
+}
+
+.hero,
+.card,
+.delta-panel,
+.history-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    box-shadow: var(--shadow);
+}
+
+.hero {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 28px;
+    margin-bottom: 24px;
+}
+
+.eyebrow {
+    margin: 0 0 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--muted);
+    font-size: 0.78rem;
+}
+
+h1, h2, h3, p {
+    margin-top: 0;
+}
+
+h1 {
+    margin-bottom: 8px;
+    font-size: 2.4rem;
+}
+
+.subtle,
+.timestamp,
+.label {
+    color: var(--muted);
+}
+
+.live-note {
+    margin-bottom: 0;
+    font-size: 0.92rem;
+}
+
+.hero-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: end;
+    gap: 12px;
+}
+
+.metric-chip {
+    min-width: 180px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: var(--accent-soft);
+}
+
+.metric-chip span,
+.metric-chip strong {
+    display: block;
+}
+
+.metric-chip strong {
+    margin-top: 4px;
+    font-size: 1.7rem;
+}
+
+.button {
+    display: inline-block;
+    padding: 12px 18px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--accent);
+    color: white;
+    text-decoration: none;
+    font-weight: 700;
+    cursor: pointer;
+    font: inherit;
+}
+
+.button-small {
+    padding: 9px 14px;
+    font-size: 0.9rem;
+}
+
+.button-secondary {
+    background: #6c7d63;
+}
+
+.button-danger {
+    background: var(--danger);
+}
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+}
+
+.card,
+.delta-panel,
+.history-card {
+    padding: 22px;
+}
+
+.card-top,
+.card-footer,
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+}
+
+.card-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.reading-grid,
+.confirm-grid,
+.delta-grid,
+.history-columns {
+    display: grid;
+    gap: 14px;
+}
+
+.confirm-grid,
+.reading-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 18px 0;
+}
+
+.confirm-grid strong,
+.reading-grid strong,
+.delta-grid strong {
+    display: block;
+    margin-top: 4px;
+    font-size: 1.25rem;
+}
+
+.status {
+    padding: 7px 12px;
+    border-radius: 999px;
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.status-fresh {
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+
+.status-stale {
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+
+.delta-panel {
+    margin-top: 24px;
+}
+
+.delta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.history {
+    margin-top: 24px;
+}
+
+.history-columns {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    margin-top: 16px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+}
+
+th,
+td {
+    padding: 10px 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+}
+
+th {
+    color: var(--muted);
+    font-weight: 600;
+}
+
+code {
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.92em;
+}
+
+@media (max-width: 780px) {
+    .hero,
+    .hero-meta,
+    .card-top,
+    .card-footer,
+    .history-header,
+    .card-actions {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .page {
+        padding: 20px 14px 40px;
+    }
+
+    h1 {
+        font-size: 1.9rem;
+    }
+}

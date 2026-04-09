@@ -1,1 +1,11 @@
 .local_runtime/
+data/*
+!data/daily-math/
+data/daily-math/*
+!data/daily-math/.gitkeep
+!data/greenhouse/
+data/greenhouse/*
+!data/greenhouse/.gitkeep
+!data/greenhouse/device-readings/
+data/greenhouse/device-readings/*
+!data/greenhouse/device-readings/.gitkeep

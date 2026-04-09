@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Greenhouse Monitor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="page">
+        <header class="hero">
+            <div>
+                <p class="eyebrow">Local greenhouse monitor</p>
+                <h1>Current conditions</h1>
+                <p class="subtle">Last refreshed <span id="refresh-timestamp">{{ generated_at_local }}</span></p>
+                <p class="live-note" id="live-status">Live updates waiting for the next reading.</p>
+                <p class="subtle">Per-station files are written under <code>{{ device_data_dir }}</code>.</p>
+            </div>
+            <div class="hero-meta">
+                <div class="metric-chip">
+                    <span>Current-week rows</span>
+                    <strong>{{ reading_count }}</strong>
+                </div>
+                <a class="button" href="{{ url_for('export_csv') }}">Download CSV</a>
+            </div>
+        </header>
+
+        <section class="cards">
+            {% for device_id, device in devices.items() %}
+            <article class="card">
+                <div class="card-top">
+                    <h2>{{ device_id|replace('_', ' ')|title }}</h2>
+                    <div class="card-actions">
+                        <span class="status {{ 'status-stale' if device.is_stale else 'status-fresh' }}">
+                            {{ 'Stale' if device.is_stale else 'Fresh' }}
+                        </span>
+                        <a class="button button-secondary button-small" href="{{ url_for('export_device_csv', device_id=device_id) }}">Download {{ device.device_csv_name }}</a>
+                        <form method="post" action="{{ url_for('delete_device', device_id=device_id) }}" onsubmit="return confirm('Delete {{ device_id }} and all of its stored readings?');">
+                            <button class="button button-danger button-small" type="submit">Delete device</button>
+                        </form>
+                    </div>
+                </div>
+                <p class="timestamp">Last seen {{ device.received_at_local }}</p>
+                <div class="confirm-grid">
+                    <div>
+                        <span class="label">Last sensor timestamp</span>
+                        <strong>{{ device.sent_at_local or "Not provided" }}</strong>
+                    </div>
+                    <div>
+                        <span class="label">Latency</span>
+                        <strong>{{ device.latency_ms if device.latency_ms is not none else "--" }} ms</strong>
+                    </div>
+                    <div>
+                        <span class="label">Uptime</span>
+                        <strong>{{ device.uptime_s if device.uptime_s is not none else "--" }} s</strong>
+                    </div>
+                    <div>
+                        <span class="label">Stored samples</span>
+                        <strong>{{ device.stored_reading_count }}</strong>
+                    </div>
+                </div>
+                <div class="reading-grid">
+                    <div>
+                        <span class="label">Temperature</span>
+                        <strong>{{ "%.1f"|format(device.temperature_c) if device.temperature_c is not none else "--" }}&deg;C</strong>
+                    </div>
+                    <div>
+                        <span class="label">Humidity</span>
+                        <strong>{{ "%.1f"|format(device.humidity_pct) if device.humidity_pct is not none else "--" }}%</strong>
+                    </div>
+                    <div>
+                        <span class="label">Light</span>
+                        <strong>{{ "%.0f"|format(device.light_lux) if device.light_lux is not none else "--" }} lux</strong>
+                    </div>
+                    <div>
+                        <span class="label">WiFi RSSI</span>
+                        <strong>{{ device.wifi_rssi_dbm }} dBm</strong>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <span>Mode: {{ device.mode }}</span>
+                    <span>Sequence: {{ device.sequence }}</span>
+                    <span>File: {{ device.device_csv_name }}</span>
+                </div>
+            </article>
+            {% else %}
+            <article class="card">
+                <h2>No devices reporting yet</h2>
+                <p>Start the ESP32 firmware and this page will populate automatically.</p>
+            </article>
+            {% endfor %}
+        </section>
+
+        <section class="delta-panel">
+            <h2>Greenhouse vs outdoor delta</h2>
+            <div class="delta-grid">
+                <div>
+                    <span class="label">Temperature</span>
+                    <strong>{{ deltas.temperature_c if deltas.temperature_c is not none else "--" }}&deg;C</strong>
+                </div>
+                <div>
+                    <span class="label">Humidity</span>
+                    <strong>{{ deltas.humidity_pct if deltas.humidity_pct is not none else "--" }}%</strong>
+                </div>
+                <div>
+                    <span class="label">Light</span>
+                    <strong>{{ deltas.light_lux if deltas.light_lux is not none else "--" }} lux</strong>
+                </div>
+            </div>
+        </section>
+
+        <section class="history">
+            <div class="history-header">
+                <h2>Recent history</h2>
+                {% if latest_archive %}
+                <p class="subtle">
+                    Latest archive: {{ latest_archive.status }}
+                    {% if latest_archive.completed_at_local %}
+                    at {{ latest_archive.completed_at_local }}
+                    {% endif %}
+                </p>
+                {% endif %}
+            </div>
+            <div class="history-columns">
+                {% for device_id, rows in history.items() %}
+                <article class="history-card">
+                    <h3>{{ device_id|replace('_', ' ')|title }}</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Received</th>
+                                <th>Temp</th>
+                                <th>Humidity</th>
+                                <th>Light</th>
+                                <th>RSSI</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in rows %}
+                            <tr>
+                                <td>{{ row.received_at_local or row.received_at_utc }}</td>
+                                <td>{{ "%.1f"|format(row.temperature_c) if row.temperature_c is not none else "--" }}</td>
+                                <td>{{ "%.1f"|format(row.humidity_pct) if row.humidity_pct is not none else "--" }}</td>
+                                <td>{{ "%.0f"|format(row.light_lux) if row.light_lux is not none else "--" }}</td>
+                                <td>{{ row.wifi_rssi_dbm }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5">No recent readings.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+    </main>
+
+    <script>
+        (() => {
+            const liveStatus = document.getElementById("live-status");
+            if (!window.EventSource || !liveStatus) {
+                return;
+            }
+
+            let reloadTimer = null;
+            const stream = new EventSource("{{ url_for('stream') }}");
+
+            const queueReload = (message) => {
+                liveStatus.textContent = message;
+                if (reloadTimer !== null) {
+                    window.clearTimeout(reloadTimer);
+                }
+                reloadTimer = window.setTimeout(() => window.location.reload(), 300);
+            };
+
+            stream.addEventListener("open", () => {
+                liveStatus.textContent = "Live updates connected.";
+            });
+
+            stream.addEventListener("dashboard", () => {
+                queueReload("New reading received. Refreshing dashboard...");
+            });
+
+            stream.onerror = () => {
+                liveStatus.textContent = "Live updates disconnected. Waiting to reconnect...";
+            };
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+# Generated from infra/app_registry.json by tools/sync_app_registry.py
+services:
+  home-page:
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - "./home-page:/usr/share/nginx/html:ro"
+    restart: unless-stopped
+  yahtzee:
+    build:
+      context: .
+      dockerfile: docker/python-service.Dockerfile
+      args:
+        APP_DIR: yahtzee-game
+        INSTALL_METHOD: requirements
+        INSTALL_TARGET: requirements.txt
+    working_dir: /workspace/yahtzee-game
+    command: "python app.py"
+    environment:
+      PORT: "5102"
+    ports:
+      - "5102:5102"
+    restart: unless-stopped
+  daily-math:
+    build:
+      context: .
+      dockerfile: docker/python-service.Dockerfile
+      args:
+        APP_DIR: Daily_math_games_v2
+        INSTALL_METHOD: requirements
+        INSTALL_TARGET: requirements.txt
+    working_dir: /workspace/Daily_math_games_v2
+    command: "uvicorn app.main:app --host 0.0.0.0 --port 5103"
+    environment:
+      PORT: "5103"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      OPENAI_MODEL: "${OPENAI_MODEL:-gpt-4.1-mini}"
+      DAILY_MATH_REPEAT_WINDOW_DAYS: "${DAILY_MATH_REPEAT_WINDOW_DAYS:-14}"
+      DAILY_MATH_DB: "/data/daily_math_game.db"
+    ports:
+      - "5103:5103"
+    volumes:
+      - "./data/daily-math:/data"
+    restart: unless-stopped
+  nutrition-label:
+    build:
+      context: .
+      dockerfile: docker/python-service.Dockerfile
+      args:
+        APP_DIR: nutrition-label-to-excel
+        INSTALL_METHOD: editable
+        INSTALL_TARGET: .
+    working_dir: /workspace/nutrition-label-to-excel
+    command: "python -m uvicorn nutrition_label_to_excel.app:app --app-dir src --host 0.0.0.0 --port 5104"
+    environment:
+      PORT: "5104"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+    ports:
+      - "5104:5104"
+    restart: unless-stopped
+  greenhouse:
+    build:
+      context: .
+      dockerfile: docker/python-service.Dockerfile
+      args:
+        APP_DIR: greenhouse-monitor
+        INSTALL_METHOD: requirements
+        INSTALL_TARGET: requirements.txt
+    working_dir: /workspace/greenhouse-monitor
+    command: "python scripts/run_dev_server.py"
+    environment:
+      GREENHOUSE_HOST: "0.0.0.0"
+      GREENHOUSE_PORT: "5105"
+      GREENHOUSE_DATA_DIR: "/data"
+      GREENHOUSE_DB_PATH: "/data/greenhouse.db"
+      GREENHOUSE_DEVICE_DATA_DIR: "/data/device-readings"
+      GREENHOUSE_EXPORT_DIR: "/data/exports"
+      GREENHOUSE_ARCHIVE_TEMP_DIR: "/data/exports/pending"
+      GREENHOUSE_ARCHIVE_SHARE_DIR: "${GREENHOUSE_ARCHIVE_SHARE_DIR:-}"
+      GREENHOUSE_TIMEZONE: "${GREENHOUSE_TIMEZONE:-America/Toronto}"
+      GREENHOUSE_STALE_MINUTES: "${GREENHOUSE_STALE_MINUTES:-5}"
+      GREENHOUSE_UI_HISTORY_LIMIT: "${GREENHOUSE_UI_HISTORY_LIMIT:-12}"
+    ports:
+      - "5105:5105"
+    volumes:
+      - "./data/greenhouse:/data"
+    restart: unless-stopped

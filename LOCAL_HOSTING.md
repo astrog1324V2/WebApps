@@ -3,10 +3,10 @@
 This guide runs all apps on your Ubuntu desktop for local/LAN testing:
 
 - Homepage hub: `http://<ubuntu-ip>:8080`
-- Blackjack: `http://<ubuntu-ip>:5101`
 - Yahtzee: `http://<ubuntu-ip>:5102`
 - Daily Math: `http://<ubuntu-ip>:5103`
 - Nutrition Label: `http://<ubuntu-ip>:5104`
+- Greenhouse Monitor: `http://<ubuntu-ip>:5105`
 
 ## Quick start (one command)
 
@@ -29,10 +29,10 @@ Optional env vars before start:
 
 ```bash
 export OPENAI_API_KEY="sk-..."
-export BLACKJACK_PORT=5101
 export YAHTZEE_PORT=5102
 export MATH_PORT=5103
 export NUTRITION_PORT=5104
+export GREENHOUSE_PORT=5105
 export HUB_PORT=8080
 ```
 
@@ -54,17 +54,6 @@ cd hosting_apps
 If the repo already exists, just `cd` into it.
 
 ## 3) Prepare each app environment
-
-### Blackjack (`blackjack-game`)
-
-```bash
-cd ~/hosting_apps/blackjack-game
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-deactivate
-```
 
 ### Yahtzee (`yahtzee-game`)
 
@@ -99,19 +88,22 @@ python -m pip install -r requirements.txt
 deactivate
 ```
 
+### Greenhouse Monitor (`greenhouse-monitor`)
+
+```bash
+cd ~/hosting_apps/greenhouse-monitor
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+deactivate
+```
+
 ## 4) Start all apps (5 terminals)
 
 Run each block in its own terminal tab/window.
 
-### Terminal A: Blackjack on port 5101
-
-```bash
-cd ~/hosting_apps/blackjack-game
-source .venv/bin/activate
-PORT=5101 python app.py
-```
-
-### Terminal B: Yahtzee on port 5102
+### Terminal A: Yahtzee on port 5102
 
 ```bash
 cd ~/hosting_apps/yahtzee-game
@@ -119,7 +111,7 @@ source .venv/bin/activate
 PORT=5102 python app.py
 ```
 
-### Terminal C: Daily Math on port 5103
+### Terminal B: Daily Math on port 5103
 
 ```bash
 cd ~/hosting_apps/Daily_math_games_v2
@@ -132,7 +124,7 @@ Notes:
 - `OPENAI_API_KEY` is only required for generating new daily sets (`POST /generate`).
 - Browsing existing static pages still works without a key.
 
-### Terminal D: Nutrition Label on port 5104
+### Terminal C: Nutrition Label on port 5104
 
 ```bash
 cd ~/hosting_apps/nutrition-label-to-excel
@@ -145,11 +137,25 @@ Notes:
 - `OPENAI_API_KEY` is required to analyze label photos.
 - The UI itself loads without the key, but scans will fail until it is set.
 
-### Terminal E: Homepage hub on port 8080
+### Terminal D: Homepage hub on port 8080
 
 ```bash
 cd ~/hosting_apps
 python3 -m http.server 8080 --bind 0.0.0.0 --directory home-page
+```
+
+### Terminal E: Greenhouse Monitor on port 5105
+
+```bash
+cd ~/hosting_apps/greenhouse-monitor
+source .venv/bin/activate
+export GREENHOUSE_HOST=0.0.0.0
+export GREENHOUSE_PORT=5105
+export GREENHOUSE_DATA_DIR=~/hosting_apps/data/greenhouse
+export GREENHOUSE_DB_PATH=~/hosting_apps/data/greenhouse/greenhouse.db
+export GREENHOUSE_DEVICE_DATA_DIR=~/hosting_apps/data/greenhouse/device-readings
+export GREENHOUSE_EXPORT_DIR=~/hosting_apps/data/greenhouse/exports
+python scripts/run_dev_server.py
 ```
 
 ## 5) Open the homepage
@@ -174,11 +180,12 @@ hostname -I
 
 ## 6) Add future apps to the homepage
 
-Edit `home-page/index.html`:
+Edit `infra/app_registry.json`, then regenerate the homepage data:
 
-- Copy one app card block.
-- Change the app name.
-- Change both `data-port` and `data-port-link` to the new app port.
+```bash
+cd ~/hosting_apps
+python3 tools/sync_app_registry.py
+```
 
 Then refresh the homepage.
 
@@ -186,12 +193,12 @@ Then refresh the homepage.
 
 - Port already in use:
   - Change the port, or stop the existing process:
-  - `ss -ltnp | grep :5101` (swap port as needed)
+  - `ss -ltnp | grep :5105` (swap port as needed)
 - Cannot access from other devices:
   - Confirm server is bound to `0.0.0.0`.
   - Allow firewall ports:
   - `sudo ufw allow 8080`
-  - `sudo ufw allow 5101:5104/tcp`
+  - `sudo ufw allow 5102:5105/tcp`
 - Homepage loads but app links fail:
   - Confirm each app terminal is still running.
-  - Open the app URL directly first (for example `http://<ubuntu-ip>:5101`).
+  - Open the app URL directly first (for example `http://<ubuntu-ip>:5105`).

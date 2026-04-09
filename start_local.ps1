@@ -16,10 +16,12 @@ function Show-Usage {
     Write-Host "  YAHTZEE_PORT   (default: 5102)"
     Write-Host "  MATH_PORT      (default: 5103)"
     Write-Host "  NUTRITION_PORT (default: 5104)"
+    Write-Host "  GREENHOUSE_PORT (default: 5105)"
     Write-Host "  HUB_PORT       (default: 8080)"
     Write-Host "  HOST_BIND      (default: 0.0.0.0)"
     Write-Host "  OPENAI_API_KEY (needed for Daily Math /generate and nutrition label scans)"
     Write-Host "  DAILY_MATH_REPEAT_WINDOW_DAYS (default: 14)"
+    Write-Host "  GREENHOUSE_TIMEZONE (default: America/Toronto)"
 }
 
 if ([string]::IsNullOrWhiteSpace($Action)) {
@@ -55,9 +57,11 @@ function Get-EnvOrDefault {
 $YAHTZEE_PORT = Get-EnvOrDefault -Name "YAHTZEE_PORT" -DefaultValue "5102"
 $MATH_PORT = Get-EnvOrDefault -Name "MATH_PORT" -DefaultValue "5103"
 $NUTRITION_PORT = Get-EnvOrDefault -Name "NUTRITION_PORT" -DefaultValue "5104"
+$GREENHOUSE_PORT = Get-EnvOrDefault -Name "GREENHOUSE_PORT" -DefaultValue "5105"
 $HUB_PORT = Get-EnvOrDefault -Name "HUB_PORT" -DefaultValue "8080"
 $HOST_BIND = Get-EnvOrDefault -Name "HOST_BIND" -DefaultValue "0.0.0.0"
 $DAILY_MATH_REPEAT_WINDOW_DAYS = Get-EnvOrDefault -Name "DAILY_MATH_REPEAT_WINDOW_DAYS" -DefaultValue "14"
+$GREENHOUSE_TIMEZONE = Get-EnvOrDefault -Name "GREENHOUSE_TIMEZONE" -DefaultValue "America/Toronto"
 
 function Get-OpenAiApiKey {
     if (-not [string]::IsNullOrWhiteSpace($env:OPENAI_API_KEY)) {
@@ -294,20 +298,25 @@ function Print-Urls {
     Write-Host "  Yahtzee:   http://localhost:$YAHTZEE_PORT"
     Write-Host "  DailyMath: http://localhost:$MATH_PORT"
     Write-Host "  Nutrition: http://localhost:$NUTRITION_PORT"
+    Write-Host "  Greenhouse: http://localhost:$GREENHOUSE_PORT"
     Write-Host ""
     Write-Host "Open from another PC on your LAN:"
     Write-Host "  Hub:       http://${lanIp}:$HUB_PORT"
+    Write-Host "  Greenhouse ingest: http://${lanIp}:$GREENHOUSE_PORT/api/v1/readings"
 }
 
 function Start-All {
     $yahtzeePython = Join-Path $RootDir "yahtzee-game\.venv\Scripts\python.exe"
     $mathPython = Join-Path $RootDir "Daily_math_games_v2\.venv\Scripts\python.exe"
     $nutritionPython = Join-Path $RootDir "nutrition-label-to-excel\.venv\Scripts\python.exe"
+    $greenhousePython = Join-Path $RootDir "greenhouse-monitor\.venv\Scripts\python.exe"
     $homePageIndex = Join-Path $RootDir "home-page\index.html"
+    $greenhouseDataDir = Join-Path $RootDir "data\greenhouse"
 
     Require-File -Path $yahtzeePython -Hint "Create yahtzee-game\.venv and install requirements."
     Require-File -Path $mathPython -Hint "Create Daily_math_games_v2\.venv and install requirements."
     Require-File -Path $nutritionPython -Hint "Create nutrition-label-to-excel\.venv and install requirements."
+    Require-File -Path $greenhousePython -Hint "Create greenhouse-monitor\.venv and install requirements."
     Require-File -Path $homePageIndex -Hint "Expected file at home-page\index.html."
 
     $openAiApiKey = Get-OpenAiApiKey
@@ -349,6 +358,22 @@ function Start-All {
         -Environment $nutritionEnv
 
     Start-One `
+        -Name "greenhouse" `
+        -WorkingDirectory (Join-Path $RootDir "greenhouse-monitor") `
+        -FilePath $greenhousePython `
+        -Arguments @("scripts/run_dev_server.py") `
+        -Environment @{
+            GREENHOUSE_HOST = $HOST_BIND
+            GREENHOUSE_PORT = $GREENHOUSE_PORT
+            GREENHOUSE_DATA_DIR = $greenhouseDataDir
+            GREENHOUSE_DB_PATH = (Join-Path $greenhouseDataDir "greenhouse.db")
+            GREENHOUSE_DEVICE_DATA_DIR = (Join-Path $greenhouseDataDir "device-readings")
+            GREENHOUSE_EXPORT_DIR = (Join-Path $greenhouseDataDir "exports")
+            GREENHOUSE_ARCHIVE_TEMP_DIR = (Join-Path $greenhouseDataDir "exports\pending")
+            GREENHOUSE_TIMEZONE = $GREENHOUSE_TIMEZONE
+        }
+
+    Start-One `
         -Name "home-page" `
         -WorkingDirectory $RootDir `
         -FilePath $mathPython `
@@ -362,6 +387,7 @@ function Start-All {
 
 function Stop-All {
     Stop-One -Name "home-page"
+    Stop-One -Name "greenhouse"
     Stop-One -Name "nutrition-label"
     Stop-One -Name "daily-math"
     Stop-One -Name "yahtzee"
@@ -371,6 +397,7 @@ function Status-All {
     Status-One -Name "yahtzee"
     Status-One -Name "daily-math"
     Status-One -Name "nutrition-label"
+    Status-One -Name "greenhouse"
     Status-One -Name "home-page"
 }
 

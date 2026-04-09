@@ -1,65 +1,55 @@
-# Cloudflare Tunnel Setup (Windows 11, Beginner Guide)
+# Cloudflare Tunnel Setup (Windows 11)
 
-This guide lets you open your local apps to the internet with your own domain, without router port forwarding.
+This guide exposes the Docker-hosted apps on your Windows PC without opening router ports.
 
-It is written for your current app setup:
-- Home page hub: `http://localhost:8080`
-- Yahtzee: `http://localhost:5102`
-- Daily Math: `http://localhost:5103`
+It matches the current stack exactly:
 
-## What You Need
+- `home.yourdomain.com` -> homepage hub on `http://localhost:8080`
+- `yahtzee.yourdomain.com` -> `http://localhost:5102`
+- `math.yourdomain.com` -> `http://localhost:5103`
+- `nutrition.yourdomain.com` -> `http://localhost:5104`
+- `greenhouse.yourdomain.com` -> `http://localhost:5105`
 
-1. A domain name you own (for example `yourdomain.com`)
-2. A Cloudflare account
-3. This repo running on your Windows 11 PC
+The homepage has been updated so that when you open it through `home.yourdomain.com`, its buttons can automatically switch to the matching public subdomains above.
 
-## 1) Put Your Domain on Cloudflare
+## Before you start
 
-1. Log in to Cloudflare.
-2. Add your domain.
-3. At your domain registrar (GoDaddy, Namecheap, etc.), change nameservers to the ones Cloudflare gives you.
-4. Wait until Cloudflare shows the domain as active.
-
-## 2) Install `cloudflared` on Windows 11
-
-Open PowerShell and run:
+1. Your domain must already be managed by Cloudflare
+2. Docker Desktop should be running on the PC
+3. The webapps stack should be up:
 
 ```powershell
-winget install --id Cloudflare.cloudflared
+cd F:\Codex_Projects\WebApps
+docker compose up --build -d
 ```
 
-Verify install:
-
-```powershell
-cloudflared --version
-```
-
-## 3) Log In and Create a Tunnel
+## 1) Install `cloudflared`
 
 In PowerShell:
 
 ```powershell
-cloudflared tunnel login
+winget install --id Cloudflare.cloudflared
+cloudflared --version
 ```
 
-A browser tab opens. Pick your domain and approve.
-
-Then create one tunnel:
+## 2) Log in and create the tunnel
 
 ```powershell
+cloudflared tunnel login
 cloudflared tunnel create webapps-tunnel
 ```
 
-Save the tunnel ID shown in output. You will use it below.
+Save the tunnel ID shown by the second command.
 
-## 4) Create Tunnel Config File
+## 3) Create the tunnel config
 
-Create this folder/file if it does not exist:
+Create:
 
-- Folder: `C:\Users\<YOUR_WINDOWS_USER>\.cloudflared`
-- File: `C:\Users\<YOUR_WINDOWS_USER>\.cloudflared\config.yml`
+```text
+C:\Users\<YOUR_WINDOWS_USER>\.cloudflared\config.yml
+```
 
-Put this in `config.yml` (replace placeholders):
+Use this template and replace the placeholders:
 
 ```yaml
 tunnel: <YOUR_TUNNEL_ID>
@@ -72,42 +62,40 @@ ingress:
     service: http://localhost:5102
   - hostname: math.yourdomain.com
     service: http://localhost:5103
+  - hostname: nutrition.yourdomain.com
+    service: http://localhost:5104
+  - hostname: greenhouse.yourdomain.com
+    service: http://localhost:5105
   - service: http_status:404
 ```
 
-## 5) Create DNS Records for Each Subdomain
-
-Run:
+## 4) Create DNS routes
 
 ```powershell
 cloudflared tunnel route dns webapps-tunnel home.yourdomain.com
 cloudflared tunnel route dns webapps-tunnel yahtzee.yourdomain.com
 cloudflared tunnel route dns webapps-tunnel math.yourdomain.com
+cloudflared tunnel route dns webapps-tunnel nutrition.yourdomain.com
+cloudflared tunnel route dns webapps-tunnel greenhouse.yourdomain.com
 ```
 
-## 6) Start Your Local Apps
+## 5) Run the tunnel
 
-From this repo:
-
-```powershell
-cd C:\Users\natfo\Desktop\hosting_apps
-.\start_local.ps1 start
-```
-
-## 7) Start the Tunnel
-
-In another PowerShell window:
+Manual run:
 
 ```powershell
 cloudflared tunnel run webapps-tunnel
 ```
 
-Now test:
+Then test:
+
 - `https://home.yourdomain.com`
 - `https://yahtzee.yourdomain.com`
 - `https://math.yourdomain.com`
+- `https://nutrition.yourdomain.com`
+- `https://greenhouse.yourdomain.com`
 
-## Optional: Auto-Start Tunnel on Boot
+## 6) Auto-start the tunnel on boot
 
 Run PowerShell as Administrator:
 
@@ -115,32 +103,61 @@ Run PowerShell as Administrator:
 cloudflared service install
 ```
 
-This installs `cloudflared` as a Windows service.
+That installs `cloudflared` as a Windows service. It will reconnect the tunnel after reboot.
 
-Notes:
-- Service auto-starts the tunnel.
-- It does not auto-start your Python apps. You still need `.\start_local.ps1 start` after reboot, unless you add your own startup task.
+## 7) What still needs to start after a reboot
+
+If Docker Desktop is set to start with Windows and restart containers automatically, the apps will come back on their own.
+
+Recommended Docker Desktop settings:
+
+1. Enable "Start Docker Desktop when you sign in"
+2. Leave each compose service on `restart: unless-stopped` as it already is
+
+After a reboot, verify:
+
+```powershell
+cd F:\Codex_Projects\WebApps
+docker compose ps
+```
+
+If needed:
+
+```powershell
+docker compose up -d
+```
+
+## Important note for the ESP32s
+
+Do not change the ESP32 upload target to the Cloudflare URL.
+
+Keep each ESP32 pointed at the PC's LAN address:
+
+```text
+http://<your-windows-pc-lan-ip>:5105/api/v1/readings
+```
+
+Cloudflare Tunnel is for browsers reaching your dashboards from outside your home. The ESP32s should keep sending readings directly to the Windows host over your local network.
+
+The board configs you should edit are in `greenhouse-monitor/esp32/boards/`. Set `WINDOWS_SERVER_LAN_IP` there before flashing the ESP32s.
 
 ## Troubleshooting
 
 - `502 Bad Gateway`
-  - The target app is not running locally.
-  - Run `.\start_local.ps1 status`.
+- The target container is not running. Check:
 
-- Domain not loading yet
-  - DNS may still be propagating.
-  - Wait a few minutes and test again.
+```powershell
+docker compose ps
+docker compose logs greenhouse
+```
 
-- Daily Math says API key is missing
-  - Set it once:
-  - `setx OPENAI_API_KEY "sk-..."`
-  - Open a new PowerShell window, then restart services:
-  - `.\start_local.ps1 restart`
+- Homepage opens but app links still show `:510x`
+- Make sure you opened the hub through `home.yourdomain.com`, not `localhost:8080`
+- The homepage only switches to public subdomains when the current hostname is already public
 
-- Tunnel looks connected but wrong app opens
-  - Check `config.yml` hostnames and ports carefully.
+- Greenhouse page loads but no new sensor data appears
+- Confirm the ESP32 `SERVER_URL` is the LAN IP and port `5105`
+- Confirm Windows Firewall allows inbound TCP `5105` on your local network
 
-## Security Tip
-
-Anything you expose with a public domain can be reached from the internet.
-If you want login protection in front of these apps, add Cloudflare Access policies later.
+- Cloudflare DNS route says the hostname already exists
+- Remove the old DNS entry in Cloudflare, then rerun the `cloudflared tunnel route dns` command

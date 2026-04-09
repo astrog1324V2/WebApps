@@ -130,59 +130,125 @@
 <body>
   <main class="wrap">
     <section class="hero">
-      <h1>Nathan's App Library</h1>
-      <p class="subtitle">Single homepage for all web apps running on your Ubuntu host.</p>
+      <h1 id="hub-title">Nathan's App Library</h1>
+      <p id="hub-subtitle" class="subtitle">Single homepage for all web apps running in Docker.</p>
     </section>
 
-    <section class="grid">
-      <article class="card">
-        <div class="tag">Game</div>
-        <h2 class="app-name">Yahtzee</h2>
-        <p class="url" data-port="5102"></p>
-        <a class="btn" data-port-link="5102" href="#">Open App</a>
-      </article>
-
-      <article class="card">
-        <div class="tag">Daily Challenge</div>
-        <h2 class="app-name">Daily Math Games</h2>
-        <p class="url" data-port="5103"></p>
-        <a class="btn alt" data-port-link="5103" href="#">Open App</a>
-      </article>
-
-      <article class="card">
-        <div class="tag">Nutrition</div>
-        <h2 class="app-name">Nutrition Label To Excel</h2>
-        <p class="url" data-port="5104"></p>
-        <a class="btn" data-port-link="5104" href="#">Open App</a>
-      </article>
-
-      <article class="card">
-        <div class="tag">Future Slot</div>
-        <h2 class="app-name">Add New App</h2>
-        <p class="url">Copy one card and change name + port when you add more apps.</p>
-      </article>
-    </section>
+    <section id="app-grid" class="grid"></section>
 
     <section class="footer">
-      Hosting tip: if this page is opened from another device, links still work because they use this page's hostname.
+      This page is generated from the shared app registry. On LAN it links to local ports; through Cloudflare it can switch to matching subdomains automatically.
     </section>
   </main>
 
   <script>
+    const appGrid = document.getElementById("app-grid");
+    const hubTitle = document.getElementById("hub-title");
+    const hubSubtitle = document.getElementById("hub-subtitle");
     const host = window.location.hostname || "localhost";
     const protocol = window.location.protocol === "https:" ? "https:" : "http:";
 
     const makeUrl = (port) => `${protocol}//${host}:${port}`;
+    const isPrivateIpv4 = (value) => {
+      const match = value.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+      if (!match) {
+        return false;
+      }
 
-    document.querySelectorAll("[data-port]").forEach((el) => {
-      const port = el.getAttribute("data-port");
-      el.textContent = makeUrl(port);
-    });
+      const first = Number(match[1]);
+      const second = Number(match[2]);
+      return (
+        first === 10 ||
+        first === 127 ||
+        (first === 192 && second === 168) ||
+        (first === 172 && second >= 16 && second <= 31)
+      );
+    };
 
-    document.querySelectorAll("[data-port-link]").forEach((el) => {
-      const port = el.getAttribute("data-port-link");
-      el.href = makeUrl(port);
-    });
+    const isProbablyLocalHost = (value) => {
+      if (!value) {
+        return true;
+      }
+      if (value === "localhost" || value === "::1" || value === "[::1]") {
+        return true;
+      }
+      if (isPrivateIpv4(value)) {
+        return true;
+      }
+      if (value.endsWith(".local") || value.endsWith(".lan") || value.endsWith(".home.arpa")) {
+        return true;
+      }
+      return !value.includes(".");
+    };
+
+    const makePublicUrl = (subdomain) => {
+      if (!subdomain) {
+        return null;
+      }
+
+      const parts = host.split(".");
+      if (parts.length < 3) {
+        return null;
+      }
+
+      return `${protocol}//${subdomain}.${parts.slice(1).join(".")}`;
+    };
+
+    const resolveAppUrl = (app) => {
+      if (isProbablyLocalHost(host)) {
+        return makeUrl(app.port);
+      }
+
+      return makePublicUrl(app.publicSubdomain) || makeUrl(app.port);
+    };
+
+    const renderAppCard = (app) => {
+      const article = document.createElement("article");
+      article.className = "card";
+
+      const buttonClass = app.buttonVariant === "alt" ? "btn alt" : "btn";
+      const appUrl = resolveAppUrl(app);
+
+      article.innerHTML = `
+        <div class="tag">${app.tag}</div>
+        <h2 class="app-name">${app.name}</h2>
+        <p class="url">${appUrl}</p>
+        <p class="url">${app.description}</p>
+        <a class="${buttonClass}" href="${appUrl}">Open App</a>
+      `;
+
+      return article;
+    };
+
+    fetch("./apps.json")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to load app list (${response.status})`);
+        }
+        return response.json();
+      })
+      .then((payload) => {
+        if (payload.hub?.title) {
+          hubTitle.textContent = payload.hub.title;
+        }
+        if (payload.hub?.subtitle) {
+          hubSubtitle.textContent = payload.hub.subtitle;
+        }
+
+        appGrid.innerHTML = "";
+        (payload.apps || []).forEach((app) => {
+          appGrid.appendChild(renderAppCard(app));
+        });
+      })
+      .catch((error) => {
+        appGrid.innerHTML = `
+          <article class="card">
+            <div class="tag">Configuration Error</div>
+            <h2 class="app-name">App list unavailable</h2>
+            <p class="url">${error.message}</p>
+          </article>
+        `;
+      });
   </script>
 </body>
 </html>

@@ -1,0 +1,129 @@
+{
+  "hub": {
+    "title": "Nathan's App Library",
+    "subtitle": "Single homepage for all web apps running in Docker on the greenhouse host."
+  },
+  "apps": [
+    {
+      "slug": "yahtzee-game",
+      "service_name": "yahtzee",
+      "display_name": "Yahtzee",
+      "tag": "Game",
+      "description": "Multiplayer Yahtzee built with Flask and Socket.IO.",
+      "button_variant": "primary",
+      "public_subdomain": "yahtzee",
+      "source_path": "yahtzee-game",
+      "port": 5102,
+      "build": {
+        "install": {
+          "type": "requirements",
+          "target": "requirements.txt"
+        }
+      },
+      "run": {
+        "command": "python app.py",
+        "environment": {
+          "PORT": "5102"
+        }
+      }
+    },
+    {
+      "slug": "daily-math-games",
+      "service_name": "daily-math",
+      "display_name": "Daily Math Games",
+      "tag": "Daily Challenge",
+      "description": "FastAPI daily math challenge app backed by SQLite.",
+      "button_variant": "alt",
+      "show_on_homepage": false,
+      "public_subdomain": "math",
+      "source_path": "Daily_math_games_v2",
+      "port": 5103,
+      "build": {
+        "install": {
+          "type": "requirements",
+          "target": "requirements.txt"
+        }
+      },
+      "run": {
+        "command": "uvicorn app.main:app --host 0.0.0.0 --port 5103",
+        "environment": {
+          "PORT": "5103",
+          "OPENAI_API_KEY": "${OPENAI_API_KEY:-}",
+          "OPENAI_MODEL": "${OPENAI_MODEL:-gpt-4.1-mini}",
+          "DAILY_MATH_REPEAT_WINDOW_DAYS": "${DAILY_MATH_REPEAT_WINDOW_DAYS:-14}",
+          "DAILY_MATH_DB": "/data/daily_math_game.db"
+        },
+        "volumes": [
+          {
+            "source": "./data/daily-math",
+            "target": "/data"
+          }
+        ]
+      }
+    },
+    {
+      "slug": "nutrition-label-to-excel",
+      "service_name": "nutrition-label",
+      "display_name": "Nutrition Label To Excel",
+      "tag": "Nutrition",
+      "description": "FastAPI nutrition label scanner and Excel row builder.",
+      "button_variant": "primary",
+      "show_on_homepage": false,
+      "public_subdomain": "nutrition",
+      "source_path": "nutrition-label-to-excel",
+      "port": 5104,
+      "build": {
+        "install": {
+          "type": "editable",
+          "target": "."
+        }
+      },
+      "run": {
+        "command": "python -m uvicorn nutrition_label_to_excel.app:app --app-dir src --host 0.0.0.0 --port 5104",
+        "environment": {
+          "PORT": "5104",
+          "OPENAI_API_KEY": "${OPENAI_API_KEY:-}"
+        }
+      }
+    },
+    {
+      "slug": "greenhouse-monitor",
+      "service_name": "greenhouse",
+      "display_name": "Greenhouse Monitor",
+      "tag": "Sensors",
+      "description": "Live greenhouse and outdoor ESP32 dashboard with per-station history files.",
+      "button_variant": "alt",
+      "public_subdomain": "greenhouse",
+      "source_path": "greenhouse-monitor",
+      "port": 5105,
+      "build": {
+        "install": {
+          "type": "requirements",
+          "target": "requirements.txt"
+        }
+      },
+      "run": {
+        "command": "python scripts/run_dev_server.py",
+        "environment": {
+          "GREENHOUSE_HOST": "0.0.0.0",
+          "GREENHOUSE_PORT": "5105",
+          "GREENHOUSE_DATA_DIR": "/data",
+          "GREENHOUSE_DB_PATH": "/data/greenhouse.db",
+          "GREENHOUSE_DEVICE_DATA_DIR": "/data/device-readings",
+          "GREENHOUSE_EXPORT_DIR": "/data/exports",
+          "GREENHOUSE_ARCHIVE_TEMP_DIR": "/data/exports/pending",
+          "GREENHOUSE_ARCHIVE_SHARE_DIR": "${GREENHOUSE_ARCHIVE_SHARE_DIR:-}",
+          "GREENHOUSE_TIMEZONE": "${GREENHOUSE_TIMEZONE:-America/Toronto}",
+          "GREENHOUSE_STALE_MINUTES": "${GREENHOUSE_STALE_MINUTES:-5}",
+          "GREENHOUSE_UI_HISTORY_LIMIT": "${GREENHOUSE_UI_HISTORY_LIMIT:-12}"
+        },
+        "volumes": [
+          {
+            "source": "./data/greenhouse",
+            "target": "/data"
+          }
+        ]
+      }
+    }
+  ]
+}
